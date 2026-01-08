@@ -1,0 +1,440 @@
+/**
+ * AI 双语助手 v7.0
+ * 紧凑UI - 可拖动、可缩放、最小遮挡
+ */
+
+:root {
+    --bi-primary: #6366f1;
+    --bi-success: #10b981;
+    --bi-bg: rgba(255, 255, 255, 0.95);
+    --bi-text: #1f2937;
+    --bi-text-muted: #6b7280;
+    --bi-border: rgba(0, 0, 0, 0.1);
+    --bi-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    --bi-radius: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bi-bg: rgba(30, 30, 35, 0.95);
+        --bi-text: #e5e7eb;
+        --bi-text-muted: #9ca3af;
+        --bi-border: rgba(255, 255, 255, 0.1);
+        --bi-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+}
+
+/* ==================== 悬浮按钮（收起状态） ==================== */
+#bilingual-toggle-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    background: var(--bi-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    z-index: 2147483646;
+    box-shadow: var(--bi-shadow);
+    transition: 0.2s;
+    user-select: none;
+}
+
+#bilingual-toggle-btn:hover {
+    transform: scale(1.1);
+}
+
+#bilingual-toggle-btn.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.5);
+}
+
+/* ==================== 主窗口（紧凑型） ==================== */
+#bilingual-floating-window {
+    position: fixed;
+    bottom: 70px;
+    right: 20px;
+    width: 280px;
+    min-width: 200px;
+    min-height: 120px;
+    max-width: 500px;
+    max-height: 400px;
+    background: var(--bi-bg);
+    border-radius: var(--bi-radius);
+    box-shadow: var(--bi-shadow);
+    border: 1px solid var(--bi-border);
+    z-index: 2147483647;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    color: var(--bi-text);
+    transition: opacity 0.2s, transform 0.2s;
+    overflow: hidden;
+    resize: both;
+}
+
+#bilingual-floating-window.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.9);
+}
+
+/* 头部（可拖动） */
+.fl-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--bi-primary);
+    color: white;
+    cursor: move;
+    font-size: 12px;
+    user-select: none;
+}
+
+.fl-header span:first-child {
+    flex: 1;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.fl-platform {
+    font-size: 10px;
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+}
+
+.fl-min {
+    width: 20px;
+    height: 20px;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.fl-min:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* 主体 */
+.fl-body {
+    padding: 10px;
+    overflow-y: auto;
+    max-height: calc(100% - 36px);
+}
+
+.fl-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    font-size: 11px;
+    color: var(--bi-text-muted);
+}
+
+.fl-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--bi-success);
+}
+
+.fl-section {
+    margin-bottom: 8px;
+}
+
+.fl-label {
+    font-size: 10px;
+    color: var(--bi-text-muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.fl-input {
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--bi-border);
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.4;
+    max-height: 60px;
+    overflow-y: auto;
+    color: var(--bi-text-muted);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.fl-input.has-content {
+    color: var(--bi-text);
+}
+
+.fl-input.has-chinese {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.3);
+    color: var(--bi-primary);
+}
+
+/* 翻译结果 */
+.fl-translation {
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid var(--bi-border);
+    border-radius: 6px;
+    max-height: 80px;
+    overflow-y: auto;
+    font-size: 12px;
+}
+
+.line-trans {
+    padding: 4px 8px;
+    background: rgba(16, 185, 129, 0.1);
+    border-left: 2px solid var(--bi-success);
+}
+
+.line-keep {
+    padding: 4px 8px;
+    color: var(--bi-text-muted);
+    font-family: monospace;
+    font-size: 11px;
+}
+
+/* 按钮 */
+.fl-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.fl-use,
+.fl-cancel {
+    flex: 1;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: 0.15s;
+}
+
+.fl-use {
+    background: var(--bi-success);
+    color: white;
+}
+
+.fl-cancel {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--bi-text-muted);
+    border: 1px solid var(--bi-border);
+}
+
+.fl-use:hover {
+    filter: brightness(1.1);
+}
+
+.fl-cancel:hover {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+/* ==================== 选中翻译按钮 ==================== */
+.sel-btn {
+    width: 24px;
+    height: 24px;
+    background: var(--bi-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    animation: pop 0.15s;
+    transition: 0.15s;
+}
+
+@keyframes pop {
+    from {
+        transform: scale(0);
+    }
+
+    to {
+        transform: scale(1);
+    }
+}
+
+.sel-btn:hover {
+    transform: scale(1.15);
+}
+
+.sel-btn.loading {
+    background: #e5e7eb;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ==================== 翻译弹窗 ==================== */
+.trans-popup {
+    position: absolute;
+    z-index: 2147483647;
+    background: var(--bi-bg);
+    border-radius: 10px;
+    box-shadow: var(--bi-shadow);
+    border: 1px solid var(--bi-border);
+    max-width: 400px;
+    min-width: 220px;
+    font-family: system-ui, sans-serif;
+    animation: fadeIn 0.15s;
+    overflow: hidden;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.popup-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: var(--bi-primary);
+    color: white;
+    font-size: 12px;
+}
+
+.popup-header span:first-child {
+    flex: 1;
+    font-weight: 500;
+}
+
+.popup-hint {
+    font-size: 9px;
+    opacity: 0.7;
+}
+
+.popup-close {
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.popup-content {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.popup-line {
+    padding: 6px 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.popup-line.trans {
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.popup-line.keep {
+    color: var(--bi-text-muted);
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.popup-footer {
+    padding: 8px 10px;
+    border-top: 1px solid var(--bi-border);
+    display: flex;
+    gap: 6px;
+}
+
+.popup-replace,
+.popup-copy {
+    flex: 1;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: 0.15s;
+}
+
+.popup-replace {
+    background: var(--bi-success);
+    color: white;
+}
+
+.popup-copy {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--bi-text-muted);
+    border: 1px solid var(--bi-border);
+}
+
+/* ==================== 翻译后文字 ==================== */
+.translated-inline {
+    cursor: pointer;
+    background: rgba(99, 102, 241, 0.1);
+    border-bottom: 1px dashed var(--bi-primary);
+    border-radius: 2px;
+    transition: 0.15s;
+}
+
+.translated-inline:hover {
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.translated-inline.showing-original {
+    background: rgba(0, 0, 0, 0.05);
+    font-style: italic;
+    border-bottom-color: transparent;
+}
+
+/* ==================== 缩放手柄样式 ==================== */
+#bilingual-floating-window {
+    resize: both;
+    overflow: auto;
+}
+
+/* 美化原生resize手柄 (仅webkit) */
+#bilingual-floating-window::-webkit-resizer {
+    background: linear-gradient(135deg, transparent 60%, var(--bi-primary) 60%, var(--bi-primary) 70%, transparent 70%);
+    cursor: nwse-resize;
+}
+
+/* 滚动条 */
+#bilingual-floating-window ::-webkit-scrollbar,
+.trans-popup ::-webkit-scrollbar {
+    width: 4px;
+}
+
+#bilingual-floating-window ::-webkit-scrollbar-thumb,
+.trans-popup ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 2px;
+}

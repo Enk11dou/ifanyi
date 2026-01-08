@@ -1,0 +1,113 @@
+/**
+ * ChatGPT 平台处理器
+ */
+const ChatGPTHandler = {
+    name: 'ChatGPT',
+
+    selectors: {
+        input: ['#prompt-textarea', 'textarea[placeholder*="Message"]', 'div[contenteditable="true"]'],
+        submitButton: ['button[data-testid="send-button"]', 'button[aria-label*="Send"]'],
+        aiResponse: '.markdown, [data-message-author-role="assistant"]',
+        conversationContainer: 'main'
+    },
+
+    getInputElement() {
+        for (const sel of this.selectors.input) {
+            const el = document.querySelector(sel);
+            if (el) return el;
+        }
+        return null;
+    },
+
+    getInputValue() {
+        const input = this.getInputElement();
+        if (!input) return '';
+        return input.contentEditable === 'true' ? (input.textContent || '') : (input.value || '');
+    },
+
+    setInputValue(value) {
+        const input = this.getInputElement();
+        if (!input) return false;
+        if (input.contentEditable === 'true') {
+            input.textContent = value;
+        } else {
+            input.value = value;
+        }
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        return true;
+    },
+
+    getSubmitButton() {
+        for (const sel of this.selectors.submitButton) {
+            const el = document.querySelector(sel);
+            if (el) return el;
+        }
+        return null;
+    },
+
+    getConversationContainer() {
+        return document.querySelector(this.selectors.conversationContainer) || document.body;
+    },
+
+    getResponseText(element) {
+        if (!element) return '';
+        const clone = element.cloneNode(true);
+        clone.querySelectorAll('.bilingual-assistant-wrapper').forEach(el => el.remove());
+        return clone.textContent || '';
+    },
+
+    insertBilingualDisplay(responseElement, originalText, translatedText) {
+        if (!responseElement || !responseElement.parentElement) return;
+
+        const existing = responseElement.parentElement.querySelector('.bilingual-assistant-wrapper');
+        if (existing) existing.remove();
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'bilingual-assistant-wrapper';
+        wrapper.innerHTML = `
+            <div class="bilingual-assistant-content">
+                <div class="chinese-translation">
+                    <div class="translation-header"><span>🇨🇳</span> 中文翻译</div>
+                    <div class="translation-text">${this.escapeHtml(translatedText)}</div>
+                </div>
+                <button class="toggle-original-btn">📖 查看英文原文</button>
+                <div class="english-original" style="display:none;">
+                    <div class="translation-header"><span>🌐</span> English Original</div>
+                    <div class="translation-text">${this.escapeHtml(originalText)}</div>
+                </div>
+            </div>
+        `;
+
+        wrapper.querySelector('.toggle-original-btn').addEventListener('click', function () {
+            const eng = wrapper.querySelector('.english-original');
+            eng.style.display = eng.style.display === 'none' ? 'block' : 'none';
+            this.textContent = eng.style.display === 'none' ? '📖 查看英文原文' : '📖 隐藏英文原文';
+        });
+
+        responseElement.parentElement.insertBefore(wrapper, responseElement.nextSibling);
+    },
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    },
+
+    init(callback) {
+        const container = this.getConversationContainer();
+        const observer = new MutationObserver((mutations) => {
+            for (const mutation of mutations) {
+                for (const node of mutation.addedNodes) {
+                    if (node.nodeType === 1) {
+                        node.querySelectorAll?.(this.selectors.aiResponse)?.forEach(el => callback(el));
+                    }
+                }
+            }
+        });
+        observer.observe(container, { childList: true, subtree: true });
+    }
+};
+
+if (typeof window !== 'undefined') {
+    window.platformHandler = ChatGPTHandler;
+}

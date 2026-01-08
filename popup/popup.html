@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 双语助手</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+    <div class="popup-container">
+        <div class="header">
+            <h1>🌐 AI 双语助手</h1>
+            <div class="status">
+                <span class="status-dot" id="statusDot"></span>
+                <span class="status-value" id="statusValue">加载中...</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="setting-row">
+                <span>启用插件</span>
+                <label class="switch">
+                    <input type="checkbox" id="enableToggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="setting-row">
+                <span>自动翻译输入</span>
+                <label class="switch">
+                    <input type="checkbox" id="inputToggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="setting-row">
+                <span>自动翻译输出</span>
+                <label class="switch">
+                    <input type="checkbox" id="outputToggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="info-row">
+                <span>当前平台</span>
+                <span id="platformValue">-</span>
+            </div>
+            <div class="info-row">
+                <span>翻译缓存</span>
+                <span><span id="cacheSize">0</span> 条</span>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button id="clearCacheBtn">清除缓存</button>
+            <button id="settingsBtn">设置</button>
+        </div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+
+</html>
