@@ -2,9 +2,9 @@
     "manifest_version": 3,
     "name": "AI 双语助手",
     "name__en": "AI Bilingual Assistant",
-    "version": "1.0.0",
-    "description": "让中文用户无缝使用英文AI - 自动翻译输入输出，支持双语对照",
-    "description__en": "Seamless AI experience for Chinese users - Auto translate input/output with bilingual display",
+    "version": "1.2.0",
+    "description": "网页翻译助手 - 选中翻译、一键翻译全文，智能保留代码格式",
+    "description__en": "Web translation assistant - Select to translate, one-click full page translation, smart code preservation",
     "icons": {
         "16": "icons/icon16.png",
         "48": "icons/icon48.png",
@@ -23,12 +23,7 @@
         "activeTab"
     ],
     "host_permissions": [
-        "https://chat.openai.com/*",
-        "https://chatgpt.com/*",
-        "https://gemini.google.com/*",
-        "https://claude.ai/*",
-        "https://translate.googleapis.com/*",
-        "https://api.mymemory.translated.net/*"
+        "<all_urls>"
     ],
     "background": {
         "service_worker": "background/background.js"
@@ -70,6 +65,26 @@
             "js": [
                 "lib/translator.js",
                 "content/claude-handler.js",
+                "content/content.js"
+            ],
+            "css": [
+                "content/content.css"
+            ],
+            "run_at": "document_end"
+        },
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "exclude_matches": [
+                "https://chat.openai.com/*",
+                "https://chatgpt.com/*",
+                "https://gemini.google.com/*",
+                "https://claude.ai/*"
+            ],
+            "js": [
+                "lib/translator.js",
+                "content/generic-handler.js",
                 "content/content.js"
             ],
             "css": [

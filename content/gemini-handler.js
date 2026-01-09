@@ -56,6 +56,13 @@ const GeminiHandler = {
         return document.querySelector(this.selectors.conversationContainer) || document.body;
     },
 
+    /**
+     * 获取所有AI回答元素
+     */
+    getResponseElements() {
+        return document.querySelectorAll(this.selectors.aiResponse);
+    },
+
     getResponseText(element) {
         if (!element) return '';
         const clone = element.cloneNode(true);

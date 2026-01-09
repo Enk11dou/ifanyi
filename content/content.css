@@ -54,6 +54,183 @@
     transform: scale(0.5);
 }
 
+/* ==================== 伴随显示框 ==================== */
+#bilingual-companion {
+    position: fixed !important;
+    z-index: 2147483647 !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+    box-sizing: border-box !important;
+    transition: opacity 0.2s, transform 0.2s !important;
+    cursor: grab;
+}
+
+#bilingual-companion * {
+    box-sizing: border-box !important;
+    font-family: inherit !important;
+}
+
+#bilingual-companion.hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(10px) !important;
+}
+
+/* 工具栏主体 */
+.bc-bar {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding: 6px 10px !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    .bc-bar {
+        background: rgba(40, 40, 45, 0.95) !important;
+        border-color: rgba(255, 255, 255, 0.1) !important;
+    }
+}
+
+.bc-icon {
+    font-size: 14px !important;
+    flex-shrink: 0 !important;
+    cursor: grab !important;
+}
+
+/* 内容区域 - 自适应宽度 */
+.bc-content {
+    max-width: 200px !important;
+}
+
+.bc-text {
+    font-size: 12px !important;
+    color: #666 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    display: block !important;
+}
+
+.bc-text.has-content {
+    color: #333 !important;
+}
+
+.bc-text.has-chinese {
+    color: #6366f1 !important;
+    font-weight: 500 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    .bc-text {
+        color: #999 !important;
+    }
+
+    .bc-text.has-content {
+        color: #ddd !important;
+    }
+
+    .bc-text.has-chinese {
+        color: #818cf8 !important;
+    }
+}
+
+/* 翻译结果区域 */
+.bc-result {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin-top: 6px !important;
+    padding: 6px 10px !important;
+    background: rgba(16, 185, 129, 0.1) !important;
+    border-radius: 12px !important;
+    max-width: 350px !important;
+}
+
+.bc-label {
+    font-size: 11px !important;
+    color: #10b981 !important;
+    flex-shrink: 0 !important;
+}
+
+.bc-translated {
+    font-size: 12px !important;
+    color: #059669 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* 按钮 - 文字清晰 */
+.bc-btn {
+    padding: 4px 10px !important;
+    border: none !important;
+    border-radius: 12px !important;
+    background: transparent !important;
+    color: #666 !important;
+    font-size: 12px !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    transition: all 0.15s !important;
+}
+
+.bc-btn:hover {
+    background: rgba(0, 0, 0, 0.08) !important;
+    color: #333 !important;
+}
+
+.bc-use {
+    background: #10b981 !important;
+    color: white !important;
+}
+
+.bc-use:hover {
+    background: #059669 !important;
+    color: white !important;
+}
+
+.bc-page {
+    background: #6366f1 !important;
+    color: white !important;
+}
+
+.bc-page:hover {
+    background: #4f46e5 !important;
+    color: white !important;
+}
+
+.bc-search {
+    background: #f59e0b !important;
+    color: white !important;
+}
+
+.bc-search:hover {
+    background: #d97706 !important;
+    color: white !important;
+}
+
+.bc-close {
+    padding: 4px 8px !important;
+    font-size: 14px !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    .bc-btn {
+        color: #aaa !important;
+    }
+
+    .bc-btn:hover {
+        background: rgba(255, 255, 255, 0.1) !important;
+        color: #fff !important;
+    }
+}
+
 /* ==================== 主窗口（紧凑型） ==================== */
 #bilingual-floating-window {
     position: fixed;
@@ -147,6 +324,36 @@
     height: 6px;
     border-radius: 50%;
     background: var(--bi-success);
+}
+
+/* 翻译全文按钮 */
+.fl-translate-all {
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--bi-primary), #4f46e5);
+    color: white;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.fl-translate-all:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.fl-translate-all:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
 }
 
 .fl-section {

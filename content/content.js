@@ -1,8 +1,8 @@
 /**
- * AI 双语助手 v5.0
- * 保留结构翻译：代码块保留，正文翻译，换行保持
+ * AI 双语助手 v6.0 - 输入框伴随模式
+ * 紧贴输入框、实时同步、极致便捷
  */
-console.log('🚀 AI 双语助手 v5.0');
+console.log('🚀 AI 双语助手 v6.0 - 伴随模式');
 
 const config = { enabled: true, autoTranslateInput: true, minTextLength: 2 };
 let floatingWindow = null;
@@ -28,6 +28,7 @@ async function init() {
     createUI();
     initInputListener();
     initSelectionListener();
+    initInputFocusDetection(); // 自动检测输入框焦点
 
     console.log('🎉 初始化完成!');
 }
@@ -41,117 +42,81 @@ async function loadConfig() {
 
 // ==================== UI ====================
 
+let companionMode = true;
+let lastInputRect = null;
+let isDragging = false;
+let dragOffset = { x: 0, y: 0 };
+
 function createUI() {
-    // 悬浮按钮
+    // 伴随显示框
+    const companion = document.createElement('div');
+    companion.id = 'bilingual-companion';
+    companion.className = 'hidden'; // 默认隐藏
+    companion.innerHTML = `
+        <div class="bc-bar">
+            <span class="bc-icon">🌐</span>
+            <div class="bc-content" id="bcContent">
+                <span class="bc-text" id="bcOriginal">等待输入...</span>
+            </div>
+            <button class="bc-btn bc-use" id="bcUse" style="display:none;">使用</button>
+            <button class="bc-btn bc-search" id="bcSearch">强制搜索</button>
+            <button class="bc-btn bc-page" id="bcPage">翻译全文</button>
+            <button class="bc-btn bc-close" id="bcClose">×</button>
+        </div>
+        <div class="bc-result" id="bcResult" style="display:none;">
+            <span class="bc-label">译文：</span>
+            <span class="bc-translated" id="bcTranslated"></span>
+        </div>
+    `;
+    document.body.appendChild(companion);
+    floatingWindow = companion;
+
+    // 迷你按钮（收起状态）
     const toggle = document.createElement('div');
     toggle.id = 'bilingual-toggle-btn';
     toggle.innerHTML = '🌐';
-    toggle.className = 'hidden';
-
-    let dragging = false, moved = false, sx, sy, ix, iy;
-    toggle.addEventListener('mousedown', e => {
-        dragging = true; moved = false;
-        sx = e.clientX; sy = e.clientY;
-        const r = toggle.getBoundingClientRect();
-        ix = r.left; iy = r.top;
-    });
-    document.addEventListener('mousemove', e => {
-        if (!dragging) return;
-        if (Math.abs(e.clientX - sx) > 3 || Math.abs(e.clientY - sy) > 3) moved = true;
-        toggle.style.left = (ix + e.clientX - sx) + 'px';
-        toggle.style.top = (iy + e.clientY - sy) + 'px';
-        toggle.style.right = 'auto';
-    });
-    document.addEventListener('mouseup', () => {
-        if (dragging) {
-            dragging = false;
-            if (!moved) showWindow();
-        }
-    });
+    toggle.title = '打开翻译助手';
     document.body.appendChild(toggle);
     floatingToggle = toggle;
 
-    // 悬浮窗口
-    const win = document.createElement('div');
-    win.id = 'bilingual-floating-window';
-    win.innerHTML = `
-        <div class="fl-header">
-            <span>🌐 双语助手</span>
-            <span class="fl-platform">${window.platformHandler?.name || ''}</span>
-            <button class="fl-min">−</button>
-        </div>
-        <div class="fl-body">
-            <div class="fl-status"><span class="fl-dot"></span><span id="flStatus">就绪</span></div>
-            <div class="fl-section">
-                <div class="fl-label">输入预览</div>
-                <div id="flInput" class="fl-input">等待输入...</div>
-            </div>
-            <div class="fl-section" id="flTransSection" style="display:none;">
-                <div class="fl-label">翻译结果</div>
-                <div id="flTranslation" class="fl-translation"></div>
-                <div class="fl-actions">
-                    <button class="fl-use" id="flUse">✓ 使用</button>
-                    <button class="fl-cancel" id="flCancel">✕</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(win);
-    floatingWindow = win;
+    // 元素引用
+    const bcOriginal = companion.querySelector('#bcOriginal');
+    const bcResult = companion.querySelector('#bcResult');
+    const bcTranslated = companion.querySelector('#bcTranslated');
+    const bcUse = companion.querySelector('#bcUse');
+    const bcPage = companion.querySelector('#bcPage');
+    const bcClose = companion.querySelector('#bcClose');
 
-    win.querySelector('.fl-min').addEventListener('click', hideWindow);
-    win.querySelector('#flUse').addEventListener('click', useTranslation);
-    win.querySelector('#flCancel').addEventListener('click', hideTranslation);
-
-    // 整个窗口可拖动（除了resize角）
-    let winDrag = false, wsx, wsy, wix, wiy;
-
-    win.addEventListener('mousedown', e => {
-        // 不在右下角20px区域（resize区域）
-        const rect = win.getBoundingClientRect();
-        const inResizeZone = (e.clientX > rect.right - 20) && (e.clientY > rect.bottom - 20);
-
-        if (inResizeZone) return; // 让CSS resize处理
+    // 拖动功能
+    companion.addEventListener('mousedown', (e) => {
         if (e.target.tagName === 'BUTTON') return;
-        if (e.target.closest('.fl-input, .fl-translation')) return; // 允许选择文字
-
-        winDrag = true;
-        wsx = e.clientX; wsy = e.clientY;
-        wix = rect.left; wiy = rect.top;
-        win.style.cursor = 'move';
+        isDragging = true;
+        const rect = companion.getBoundingClientRect();
+        dragOffset.x = e.clientX - rect.left;
+        dragOffset.y = e.clientY - rect.top;
+        companion.style.cursor = 'grabbing';
     });
 
-    document.addEventListener('mousemove', e => {
-        if (!winDrag) return;
-        win.style.left = (wix + e.clientX - wsx) + 'px';
-        win.style.top = (wiy + e.clientY - wsy) + 'px';
-        win.style.right = 'auto';
-        win.style.bottom = 'auto';
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        companion.style.left = (e.clientX - dragOffset.x) + 'px';
+        companion.style.top = (e.clientY - dragOffset.y) + 'px';
+        companion.style.right = 'auto';
+        companion.style.bottom = 'auto';
     });
 
     document.addEventListener('mouseup', () => {
-        winDrag = false;
-        if (floatingWindow) floatingWindow.style.cursor = '';
+        isDragging = false;
+        if (companion) companion.style.cursor = '';
     });
-}
 
-function showWindow() {
-    floatingWindow?.classList.remove('hidden');
-    floatingToggle?.classList.add('hidden');
-}
-
-function hideWindow() {
-    floatingWindow?.classList.add('hidden');
-    floatingToggle?.classList.remove('hidden');
-}
-
-// ==================== 输入翻译 ====================
-
-function initInputListener() {
+    // 监听主输入框内容变化
     let lastValue = '';
+    let translateTimer = null;
 
     setInterval(() => {
-        if (!config.enabled) return;
+        if (!config.enabled || floatingWindow?.classList.contains('hidden')) return;
+
         const handler = window.platformHandler;
         if (!handler) return;
 
@@ -159,86 +124,445 @@ function initInputListener() {
         if (value === lastValue) return;
         lastValue = value;
 
-        updateInputDisplay(value);
+        // 显示原文
+        if (!value?.trim()) {
+            bcOriginal.textContent = '等待输入...';
+            bcOriginal.className = 'bc-text';
+            bcResult.style.display = 'none';
+            bcUse.style.display = 'none';
+            return;
+        }
 
-        if (value && value.trim().length >= config.minTextLength &&
-            window.translationService.containsChinese(value)) {
-            clearTimeout(inputDebounceTimer);
-            inputDebounceTimer = setTimeout(() => translateInput(value), 1000);
+        // 自适应显示（不截断太多）
+        bcOriginal.textContent = value.length > 30 ? value.slice(0, 30) + '...' : value;
+        bcOriginal.className = 'bc-text has-content';
+
+        // 检测中文并翻译
+        if (window.translationService?.containsChinese(value)) {
+            bcOriginal.classList.add('has-chinese');
+
+            clearTimeout(translateTimer);
+            translateTimer = setTimeout(async () => {
+                try {
+                    const translated = await window.translationService.toEnglish(value);
+                    if (translated && translated !== value) {
+                        bcTranslated.textContent = translated.length > 50 ? translated.slice(0, 50) + '...' : translated;
+                        bcResult.style.display = 'flex';
+                        bcUse.style.display = 'inline-block';
+                        floatingWindow._translated = translated;
+                    }
+                } catch (e) { }
+            }, 500);
+        } else {
+            bcOriginal.classList.remove('has-chinese');
+            bcResult.style.display = 'none';
+            bcUse.style.display = 'none';
         }
     }, 300);
+
+    // 使用翻译结果
+    bcUse.addEventListener('click', () => {
+        if (floatingWindow?._translated) {
+            window.platformHandler?.setInputValue(floatingWindow._translated);
+            bcResult.style.display = 'none';
+            bcUse.style.display = 'none';
+        }
+    });
+
+    // 强制搜索（提示词注入）
+    const bcSearch = companion.querySelector('#bcSearch');
+    bcSearch.addEventListener('click', () => {
+        injectSearchPrompt();
+    });
+
+    // 翻译全文
+    bcPage.addEventListener('click', translateAllResponses);
+
+    // 收起
+    bcClose.addEventListener('click', hideWindow);
+
+    // 展开
+    toggle.addEventListener('click', showWindow);
+
+    // 初始定位
+    positionCompanion();
 }
 
-function updateInputDisplay(text) {
+/**
+ * 智能定位：紧贴输入框上方，不遮挡输入框
+ */
+function positionCompanion(forceReposition = false) {
     if (!floatingWindow || floatingWindow.classList.contains('hidden')) return;
+    if (isDragging) return; // 拖动时不自动定位
 
-    const input = floatingWindow.querySelector('#flInput');
-    const status = floatingWindow.querySelector('#flStatus');
+    const handler = window.platformHandler;
+    if (!handler) return;
 
-    if (!text?.trim()) {
-        input.textContent = '等待输入...';
-        input.className = 'fl-input';
-        status.textContent = '就绪';
+    const inputEl = handler.getInputElement();
+    if (!inputEl) return;
+
+    const rect = inputEl.getBoundingClientRect();
+
+    // 如果不是强制重定位，检查输入框位置是否变化
+    if (!forceReposition && lastInputRect &&
+        Math.abs(rect.left - lastInputRect.left) < 5 &&
+        Math.abs(rect.top - lastInputRect.top) < 5) {
+        return;
+    }
+    lastInputRect = rect;
+
+    const companionHeight = floatingWindow.offsetHeight || 60;
+    const gap = 20; // 与输入框的间距（不紧贴）
+
+    // 计算位置：在输入框上方，保持距离
+    let top = rect.top - companionHeight - gap;
+    let left = rect.left;
+    let width = Math.min(rect.width, 400);
+
+    // 确保不超出屏幕顶部
+    if (top < 10) {
+        // 如果上方空间不够，尝试放在输入框左侧或右侧
+        top = rect.top;
+        left = rect.left - width - gap;
+        if (left < 10) {
+            left = rect.right + gap;
+        }
+    }
+
+    // 确保不超出屏幕右侧
+    if (left + width > window.innerWidth - 10) {
+        left = window.innerWidth - width - 10;
+    }
+
+    // 确保不超出屏幕左侧
+    if (left < 10) {
+        left = 10;
+    }
+
+    floatingWindow.style.position = 'fixed';
+    floatingWindow.style.left = left + 'px';
+    floatingWindow.style.top = top + 'px';
+    floatingWindow.style.width = width + 'px';
+    floatingWindow.style.right = 'auto';
+    floatingWindow.style.bottom = 'auto';
+}
+
+/**
+ * 检测元素是否是可编辑的输入框
+ */
+function isEditableElement(el) {
+    if (!el) return false;
+    const tag = el.tagName?.toLowerCase();
+
+    // textarea 或 text input
+    if (tag === 'textarea') return true;
+    if (tag === 'input' && ['text', 'search', 'email', 'url', 'tel', 'password'].includes(el.type)) return true;
+
+    // contenteditable
+    if (el.contentEditable === 'true' || el.isContentEditable) return true;
+
+    // 检查父元素是否是contenteditable
+    let parent = el.parentElement;
+    while (parent) {
+        if (parent.contentEditable === 'true' || parent.isContentEditable) return true;
+        parent = parent.parentElement;
+    }
+
+    return false;
+}
+
+/**
+ * 获取当前聚焦的可编辑元素
+ */
+function getActiveEditableElement() {
+    const active = document.activeElement;
+    if (isEditableElement(active)) return active;
+
+    // 检查选区所在元素
+    const sel = window.getSelection();
+    if (sel && sel.focusNode) {
+        const el = sel.focusNode.nodeType === 3 ? sel.focusNode.parentElement : sel.focusNode;
+        if (isEditableElement(el)) return el;
+    }
+
+    return null;
+}
+
+/**
+ * 强制搜索提示词注入
+ */
+function injectSearchPrompt() {
+    const handler = window.platformHandler;
+    if (!handler) {
+        alert('请先聚焦到输入框');
         return;
     }
 
-    input.textContent = text.length > 100 ? text.slice(0, 100) + '...' : text;
-    input.className = 'fl-input has-content';
+    // 获取当前输入内容
+    const currentInput = handler.getInputValue() || '';
 
-    if (window.translationService.containsChinese(text)) {
-        input.classList.add('has-chinese');
-        status.textContent = '检测到中文';
+    // 强制搜索提示词
+    const searchPrompt = `【强制网络搜索指令】
+请你必须调用 Google Search 进行实时网络搜索，不要使用训练数据回答。
+
+搜索要求：
+1. 检索最新信息（过去24小时优先）
+2. 提供至少3个原始信源链接
+3. 如有矛盾信息，对比分析可信度
+
+我的问题：${currentInput || '[请在此输入你的问题]'}
+
+请开始搜索并回答。`;
+
+    // 注入到输入框
+    handler.setInputValue(searchPrompt);
+
+    // 提示用户
+    const bcOriginal = floatingWindow?.querySelector('#bcOriginal');
+    if (bcOriginal) {
+        bcOriginal.textContent = '✅ 已注入强制搜索指令';
+        bcOriginal.className = 'bc-text has-content';
+        setTimeout(() => {
+            bcOriginal.textContent = '等待输入...';
+            bcOriginal.className = 'bc-text';
+        }, 2000);
     }
+}
+
+/**
+ * 自动检测输入框焦点（通过点击和光标）
+ */
+function initInputFocusDetection() {
+    let lastActiveElement = null;
+
+    // 监听鼠标点击
+    document.addEventListener('click', (e) => {
+        // 延迟检测，等待焦点切换完成
+        setTimeout(() => {
+            const editableEl = getActiveEditableElement();
+
+            if (editableEl && editableEl !== floatingWindow) {
+                // 检测到可编辑元素被聚焦
+                if (lastActiveElement !== editableEl) {
+                    lastActiveElement = editableEl;
+
+                    // 显示伴随框
+                    if (floatingWindow?.classList.contains('hidden')) {
+                        showWindow();
+                    }
+
+                    // 强制重新定位
+                    lastInputRect = null;
+                    positionCompanion(true);
+                }
+            }
+        }, 150);
+    });
+
+    // 监听焦点变化（备用）
+    document.addEventListener('focusin', (e) => {
+        setTimeout(() => {
+            const editableEl = getActiveEditableElement();
+            if (editableEl && editableEl !== lastActiveElement) {
+                lastActiveElement = editableEl;
+
+                if (floatingWindow?.classList.contains('hidden')) {
+                    showWindow();
+                }
+
+                lastInputRect = null;
+                positionCompanion(true);
+            }
+        }, 100);
+    });
+
+    // 监听键盘输入（检测光标活动）
+    document.addEventListener('keydown', (e) => {
+        const editableEl = getActiveEditableElement();
+        if (editableEl && floatingWindow?.classList.contains('hidden')) {
+            showWindow();
+            lastInputRect = null;
+            positionCompanion(true);
+        }
+    });
+
+    // 监听滚动重新定位
+    document.addEventListener('scroll', () => {
+        positionCompanion(true);
+    }, true);
+
+    // 监听窗口大小变化
+    window.addEventListener('resize', () => {
+        positionCompanion(true);
+    });
+
+    // 定期检查位置
+    setInterval(() => {
+        positionCompanion(false);
+    }, 500);
+}
+
+function showWindow() {
+    floatingWindow?.classList.remove('hidden');
+    floatingToggle?.classList.add('hidden');
+    positionCompanion(true);
+}
+
+function hideWindow() {
+    floatingWindow?.classList.add('hidden');
+    floatingToggle?.classList.remove('hidden');
+}
+
+// ==================== 输入翻译（伴随模式已在createUI中处理）====================
+
+function initInputListener() {
+    // 伴随模式下，输入监听已在createUI中实现
+    // 这里保留空函数以兼容初始化流程
+}
+
+function updateInputDisplay(text) {
+    // 伴随模式不需要此函数
 }
 
 async function translateInput(text) {
-    if (!floatingWindow) return;
-
-    const status = floatingWindow.querySelector('#flStatus');
-    const transSection = floatingWindow.querySelector('#flTransSection');
-    const transDiv = floatingWindow.querySelector('#flTranslation');
-
-    status.textContent = '翻译中...';
-
-    try {
-        // 使用保留结构的翻译
-        const result = await window.translationService.translateWithDetails(text, 'zh-CN', 'en');
-
-        if (result.hasTranslation) {
-            // 构建带高亮的HTML（保留换行）
-            let html = '';
-            for (const line of result.lines) {
-                const escaped = escapeHtml(line.text);
-                if (line.translated) {
-                    html += `<div class="line-trans">${escaped}</div>`;
-                } else {
-                    html += `<div class="line-keep">${escaped || '&nbsp;'}</div>`;
-                }
-            }
-
-            transDiv.innerHTML = html;
-            transSection.style.display = 'block';
-            status.textContent = '✅ 完成';
-            floatingWindow._translated = result.result;
-        } else {
-            status.textContent = '无需翻译';
-        }
-    } catch (e) {
-        console.error('翻译失败:', e);
-        status.textContent = '❌ 失败';
-    }
+    // 伴随模式不需要此函数
 }
 
 function useTranslation() {
-    if (!floatingWindow?._translated) return;
-    window.platformHandler?.setInputValue(floatingWindow._translated);
-    hideTranslation();
+    // 伴随模式不需要此函数
 }
 
 function hideTranslation() {
-    if (!floatingWindow) return;
-    floatingWindow.querySelector('#flTransSection').style.display = 'none';
-    floatingWindow._translated = null;
+    // 伴随模式不需要此函数
+}
+
+// ==================== 翻译全文 ====================
+
+async function translateAllResponses() {
+    const btn = floatingWindow?.querySelector('#bcPage');
+    const bcInput = floatingWindow?.querySelector('#bcInput');
+
+    if (btn) {
+        btn.textContent = '⏳';
+        btn.disabled = true;
+    }
+
+    // 显示状态在输入框
+    const originalPlaceholder = bcInput?.placeholder;
+    if (bcInput) bcInput.placeholder = '翻译中...';
+
+    try {
+        // 获取页面内容元素
+        const handler = window.platformHandler;
+        let responses;
+
+        if (handler && handler.getResponseElements) {
+            responses = handler.getResponseElements();
+        }
+
+        // 如果没有找到内容，使用body
+        if (!responses || responses.length === 0) {
+            responses = [document.body];
+        }
+
+        let translatedCount = 0;
+        let totalNodes = 0;
+
+        for (const response of responses) {
+            // 获取所有文本节点
+            const walker = document.createTreeWalker(
+                response,
+                NodeFilter.SHOW_TEXT,
+                null
+            );
+
+            const textNodes = [];
+            while (walker.nextNode()) {
+                textNodes.push(walker.currentNode);
+            }
+
+            // 收集需要翻译的节点
+            const toTranslate = [];
+            for (const node of textNodes) {
+                if (isInCodeOrFormula(node)) continue;
+                const text = node.textContent.trim();
+                if (!text || text.length < 5) continue;
+                if (!shouldTranslateText(text)) continue;
+                if (window.translationService.isMainlyChinese(text)) continue; // 跳过中文
+                if (node.parentElement?.classList?.contains('translated-inline')) continue; // 已翻译
+
+                toTranslate.push({ node, text });
+            }
+
+            totalNodes += toTranslate.length;
+
+            // 批量翻译
+            if (toTranslate.length > 0) {
+                const texts = toTranslate.map(t => t.text);
+                const translations = await window.translationService.translateBatch(texts, 'en', 'zh-CN');
+
+                // 替换文本节点
+                for (let i = 0; i < toTranslate.length; i++) {
+                    const { node, text } = toTranslate[i];
+                    const translated = translations[i];
+
+                    if (translated && translated !== text) {
+                        const span = document.createElement('span');
+                        span.className = 'translated-inline';
+                        span.textContent = translated;
+                        span.dataset.original = text;
+                        span.dataset.translated = translated;
+                        span.dataset.state = 'translated';
+                        span.title = '点击切换';
+
+                        span.addEventListener('click', function (e) {
+                            e.stopPropagation();
+                            if (this.dataset.state === 'translated') {
+                                this.textContent = this.dataset.original;
+                                this.dataset.state = 'original';
+                                this.classList.add('showing-original');
+                            } else {
+                                this.textContent = this.dataset.translated;
+                                this.dataset.state = 'translated';
+                                this.classList.remove('showing-original');
+                            }
+                        });
+
+                        try {
+                            node.parentNode.replaceChild(span, node);
+                            translatedCount++;
+                        } catch (e) { }
+                    }
+                }
+            }
+
+            // 更新进度
+            if (bcInput) bcInput.placeholder = `翻译中... ${translatedCount}/${totalNodes}`;
+        }
+
+        // 完成
+        if (bcInput) bcInput.placeholder = `✅ 完成 (${translatedCount}处)`;
+        setTimeout(() => {
+            if (bcInput) bcInput.placeholder = originalPlaceholder || '输入中文，自动翻译...';
+        }, 2000);
+
+        if (btn) {
+            btn.textContent = '📄';
+            btn.disabled = false;
+        }
+
+    } catch (e) {
+        console.error('翻译全文失败:', e);
+        if (bcInput) bcInput.placeholder = '❌ 翻译失败';
+        setTimeout(() => {
+            if (bcInput) bcInput.placeholder = originalPlaceholder || '输入中文，自动翻译...';
+        }, 2000);
+
+        if (btn) {
+            btn.textContent = '📄';
+            btn.disabled = false;
+        }
+    }
 }
 
 // ==================== 选中翻译 ====================
